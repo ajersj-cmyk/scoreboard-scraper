@@ -26,8 +26,8 @@ module.exports = async (req, res) => {
             $('table.w-full tbody tr').each((i, el) => {
                 if (i < 15) { // Stop after the top 15
                     const rank = $(el).find('td').eq(0).text().trim().replace('.', ''); // Column 1: Rank
-                    const name = $(el).find('td').eq(2).find('a').text().trim();   // CORRECTED: Column 3 is Player
-                    const points = $(el).find('td').eq(4).text().trim(); // CORRECTED: Column 5 is Points
+                    const name = $(el).find('td').eq(2).find('a').text().trim();   // Column 3 is Player
+                    const points = $(el).find('td').eq(3).text().trim(); // CORRECTED: Column 4 is Points
                     
                     if (rank && name && points) {
                         players.push({ rank, name, points });
@@ -48,8 +48,8 @@ module.exports = async (req, res) => {
 
         // Allow your scoreboard to fetch this data
         res.setHeader('Access-Control-Allow-Origin', '*');
-        // Cache the results for 48 hours
-        res.setHeader('Cache-Control', 's-maxage=172800, stale-while-revalidate'); 
+        // CORRECTED: Cache the results for 24 hours (86400 seconds)
+        res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate'); 
 
         // Send the clean data back as JSON
         res.status(200).json({ mpo: mpoData, fpo: fpoData });
