@@ -34,6 +34,11 @@ module.exports = async (req, res) => {
         const mpoData = scrapeRankings('#world-rankings-mpo');
         const fpoData = scrapeRankings('#world-rankings-fpo');
 
+        // NEW, IMPORTANT CHECK: If we didn't find any players, something is wrong with the PDGA page.
+        if (mpoData.length === 0 || fpoData.length === 0) {
+            throw new Error('Failed to find player data in the scraped HTML. The PDGA page structure may have changed.');
+        }
+
         // Allow your scoreboard (on a different domain) to fetch data from this script
         res.setHeader('Access-Control-Allow-Origin', '*');
         // Cache the results for 48 hours (172800 seconds)
@@ -44,7 +49,7 @@ module.exports = async (req, res) => {
 
     } catch (error) {
         console.error('Scraping failed:', error);
-        res.status(500).json({ error: 'Failed to scrape PDGA rankings.' });
+        res.status(500).json({ error: 'Failed to scrape PDGA rankings.', message: error.message });
     }
 };
 
