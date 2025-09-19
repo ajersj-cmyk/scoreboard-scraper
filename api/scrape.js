@@ -4,24 +4,31 @@ const cheerio = require('cheerio');
 // This is a Vercel Serverless Function.
 module.exports = async (req, res) => {
     try {
-        const url = 'https://www.pdga.com/world-rankings';
-        // Fetch the HTML from the PDGA website, pretending to be a browser
-        const { data } = await axios.get(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
-        });
-        const $ = cheerio.load(data);
+        const mpoUrl = 'https://statmando.com/rankings/dgpt/mpo';
+        const fpoUrl = 'https://statmando.com/rankings/dgpt/fpo';
 
-        // A helper function to scrape a specific rankings table by its ID
-        const scrapeRankings = (tableId) => {
+        // Fetch both the MPO and FPO pages at the same time
+        const [mpoResponse, fpoResponse] = await Promise.all([
+            axios.get(mpoUrl, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+            }),
+            axios.get(fpoUrl, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+            })
+        ]);
+
+        // Helper function to parse the HTML from a Statmando rankings page
+        const parseStatmandoRankings = (html) => {
             const players = [];
-            // Find the table and loop through each row in its body
-            $(`${tableId} tbody tr`).each((i, el) => {
+            const $ = cheerio.load(html);
+            
+            // Find the main table body and iterate through each row
+            $('table tbody tr').each((i, el) => {
                 if (i < 15) { // Stop after the top 15
-                    const rank = $(el).find('td:nth-child(1)').text().trim();
-                    const name = $(el).find('td:nth-child(3)').text().trim();
-                    const points = $(el).find('td:nth-child(7)').text().trim();
+                    const rank = $(el).find('td').eq(0).text().trim().replace('.', ''); // First column
+                    const name = $(el).find('td').eq(1).find('a').text().trim(); // Second column, find the link inside
+                    const points = $(el).find('td').eq(3).text().trim(); // Fourth column
+                    
                     if (rank && name && points) {
                         players.push({ rank, name, points });
                     }
@@ -30,18 +37,18 @@ module.exports = async (req, res) => {
             return players;
         };
 
-        // Scrape both the MPO and FPO tables
-        const mpoData = scrapeRankings('#world-rankings-mpo');
-        const fpoData = scrapeRankings('#world-rankings-fpo');
+        // Scrape both the MPO and FPO data
+        const mpoData = parseStatmandoRankings(mpoResponse.data);
+        const fpoData = parseStatmandoRankings(fpoResponse.data);
 
-        // NEW, IMPORTANT CHECK: If we didn't find any players, something is wrong with the PDGA page.
+        // If we didn't find any players, something is wrong with the Statmando page structure.
         if (mpoData.length === 0 || fpoData.length === 0) {
-            throw new Error('Failed to find player data in the scraped HTML. The PDGA page structure may have changed.');
+            throw new Error('Failed to find player data in the scraped HTML. The Statmando page structure may have changed.');
         }
 
-        // Allow your scoreboard (on a different domain) to fetch data from this script
+        // Allow your scoreboard to fetch this data
         res.setHeader('Access-Control-Allow-Origin', '*');
-        // Cache the results for 48 hours (172800 seconds)
+        // Cache the results for 48 hours
         res.setHeader('Cache-Control', 's-maxage=172800, stale-while-revalidate'); 
 
         // Send the clean data back as JSON
@@ -49,7 +56,7 @@ module.exports = async (req, res) => {
 
     } catch (error) {
         console.error('Scraping failed:', error);
-        res.status(500).json({ error: 'Failed to scrape PDGA rankings.', message: error.message });
+        res.status(500).json({ error: 'Failed to scrape DGPT rankings.', message: error.message });
     }
 };
 
