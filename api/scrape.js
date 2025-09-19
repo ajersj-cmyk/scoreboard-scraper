@@ -4,7 +4,9 @@ const cheerio = require('cheerio');
 // This is a Vercel Serverless Function. It must be exported this way to work.
 module.exports = async (req, res) => {
     try {
-        const url = 'https://www.pdga.com/players/world-rankings';
+        // CORRECTED URL: The old '/players/' path was removed by the PDGA.
+        const url = 'https://www.pdga.com/world-rankings'; 
+        
         // Fetch the HTML from the PDGA website, pretending to be a browser
         const { data } = await axios.get(url, {
             headers: {
