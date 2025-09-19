@@ -22,12 +22,12 @@ module.exports = async (req, res) => {
             const players = [];
             const $ = cheerio.load(html);
             
-            // CORRECTED SELECTOR: This now targets the specific table with ID "rankings_table" on Statmando.
-            $('#rankings_table tbody tr').each((i, el) => {
+            // Find the main table body and iterate through each row
+            $('table.w-full tbody tr').each((i, el) => {
                 if (i < 15) { // Stop after the top 15
-                    const rank = $(el).find('td').eq(0).text().trim().replace('.', ''); // First column
-                    const name = $(el).find('td').eq(1).find('a').text().trim(); // Second column, find the link inside
-                    const points = $(el).find('td').eq(3).text().trim(); // Fourth column
+                    const rank = $(el).find('td').eq(0).text().trim().replace('.', ''); // Column 1: Rank
+                    const name = $(el).find('td').eq(2).find('a').text().trim();   // CORRECTED: Column 3 is Player
+                    const points = $(el).find('td').eq(4).text().trim(); // CORRECTED: Column 5 is Points
                     
                     if (rank && name && points) {
                         players.push({ rank, name, points });
