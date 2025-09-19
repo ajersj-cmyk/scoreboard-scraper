@@ -1,14 +1,13 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 
-// This is a Vercel Serverless Function. It needs to be exported correctly.
+// This is a Vercel Serverless Function. It must be exported this way to work.
 module.exports = async (req, res) => {
     try {
         const url = 'https://www.pdga.com/players/world-rankings';
-        // Fetch the HTML from the PDGA website
+        // Fetch the HTML from the PDGA website, pretending to be a browser
         const { data } = await axios.get(url, {
             headers: {
-                // Some sites block requests without a user-agent, so we'll pretend to be a browser.
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
         });
@@ -35,11 +34,11 @@ module.exports = async (req, res) => {
         const mpoData = scrapeRankings('#world-rankings-mpo');
         const fpoData = scrapeRankings('#world-rankings-fpo');
 
-        // IMPORTANT: These headers allow your scoreboard (on a different domain) to fetch data from this script.
+        // Allow your scoreboard (on a different domain) to fetch data from this script
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate'); // Cache the results for 1 day
 
-        // Send the clean data back
+        // Send the clean data back as JSON
         res.status(200).json({ mpo: mpoData, fpo: fpoData });
 
     } catch (error) {
