@@ -1,66 +1,50 @@
-function fetchDGPTSchedule() {
-    const container = document.getElementById('dgpt-schedule');
-    if (!container) {
-        console.error('Container not found for dgpt-schedule');
-        return;
-    }
-    container.innerHTML = '<p class="no-games">Loading DGPT World Rankings...</p>';
+const axios = require('axios');
+const cheerio = require('cheerio');
 
-    // IMPORTANT: Replace this URL with the live URL Vercel gives you for your scraper.
-    const scraperUrl = 'https://your-project-name.vercel.app/api/scrape'; 
-
-    fetch(scraperUrl)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
+// This is a Vercel Serverless Function. It needs to be exported correctly.
+module.exports = async (req, res) => {
+    try {
+        const url = 'https://www.pdga.com/players/world-rankings';
+        // Fetch the HTML from the PDGA website
+        const { data } = await axios.get(url, {
+            headers: {
+                // Some sites block requests without a user-agent, so we'll pretend to be a browser.
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
-            return response.json();
-        })
-        .then(data => {
-            const { mpo, fpo } = data;
-
-            if (!mpo || !fpo || mpo.length === 0 || fpo.length === 0) {
-                throw new Error('Scraped data is empty or invalid.');
-            }
-
-            container.innerHTML = `
-                <div class="standings-container">
-                    <div class="standings-division">
-                        <h3>MPO World Rankings</h3>
-                        <table class="standings-table">
-                            <thead><tr><th>Rank</th><th>Name</th><th>Points</th></tr></thead>
-                            <tbody>
-                                ${mpo.map(player => `
-                                    <tr>
-                                        <td>${player.rank}</td>
-                                        <td>${player.name}</td>
-                                        <td>${player.points}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="standings-division">
-                        <h3>FPO World Rankings</h3>
-                        <table class="standings-table">
-                            <thead><tr><th>Rank</th><th>Name</th><th>Points</th></tr></thead>
-                            <tbody>
-                                ${fpo.map(player => `
-                                    <tr>
-                                        <td>${player.rank}</td>
-                                        <td>${player.name}</td>
-                                        <td>${player.points}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-        })
-        .catch(error => {
-            console.error('Error fetching DGPT rankings:', error);
-            container.innerHTML = '<p class="no-games">Could not load DGPT rankings.</p>';
         });
-}
+        const $ = cheerio.load(data);
+
+        // A helper function to scrape a specific rankings table by its ID
+        const scrapeRankings = (tableId) => {
+            const players = [];
+            // Find the table and loop through each row in its body
+            $(`${tableId} tbody tr`).each((i, el) => {
+                if (i < 15) { // Stop after the top 15
+                    const rank = $(el).find('td:nth-child(1)').text().trim();
+                    const name = $(el).find('td:nth-child(3)').text().trim();
+                    const points = $(el).find('td:nth-child(7)').text().trim();
+                    if (rank && name && points) {
+                        players.push({ rank, name, points });
+                    }
+                }
+            });
+            return players;
+        };
+
+        // Scrape both the MPO and FPO tables
+        const mpoData = scrapeRankings('#world-rankings-mpo');
+        const fpoData = scrapeRankings('#world-rankings-fpo');
+
+        // IMPORTANT: These headers allow your scoreboard (on a different domain) to fetch data from this script.
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate'); // Cache the results for 1 day
+
+        // Send the clean data back
+        res.status(200).json({ mpo: mpoData, fpo: fpoData });
+
+    } catch (error) {
+        console.error('Scraping failed:', error);
+        res.status(500).json({ error: 'Failed to scrape PDGA rankings.' });
+    }
+};
 
