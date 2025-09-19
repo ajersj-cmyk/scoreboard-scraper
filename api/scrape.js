@@ -22,12 +22,13 @@ module.exports = async (req, res) => {
             const players = [];
             const $ = cheerio.load(html);
             
-            // Find the main table body and iterate through each row
-            $('table tbody tr').each((i, el) => {
+            // CORRECTED SELECTOR: This now targets the specific table and its rows on Statmando.
+            $('table.w-full tbody tr').each((i, el) => {
                 if (i < 15) { // Stop after the top 15
-                    const rank = $(el).find('td').eq(0).text().trim().replace('.', ''); // First column
-                    const name = $(el).find('td').eq(1).find('a').text().trim(); // Second column, find the link inside
-                    const points = $(el).find('td').eq(3).text().trim(); // Fourth column
+                    const rank = $(el).find('td').eq(0).text().trim().replace('.', ''); 
+                    // The name is inside a nested div, so we target it more specifically.
+                    const name = $(el).find('td').eq(1).find('div > div').first().text().trim();
+                    const points = $(el).find('td').eq(3).text().trim(); 
                     
                     if (rank && name && points) {
                         players.push({ rank, name, points });
@@ -43,7 +44,7 @@ module.exports = async (req, res) => {
 
         // If we didn't find any players, something is wrong with the Statmando page structure.
         if (mpoData.length === 0 || fpoData.length === 0) {
-            throw new Error('Failed to find player data in the scraped HTML. The Statmando page structure may have changed.');
+            throw new Error('Failed to find player data in the scraped HTML. The Statmando page structure may have changed again.');
         }
 
         // Allow your scoreboard to fetch this data
